@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>GiggleFargo — Discord Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Teko:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════
+   ROOT & RESET
+═══════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#040407;
+  --deep:#07080f;
+  --panel:#0b0c17;
+  --panel2:#0f1020;
+  --line:#151628;
+  --line2:#1e2038;
+  --green:#00ff88;
+  --green2:#00cc6a;
+  --red:#ff2255;
+  --blue:#0af;
+  --amber:#ffb300;
+  --white:#e8eaf6;
+  --dim:#4a4d6e;
+  --dim2:#2a2c48;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--black);
+  color:var(--white);
+  font-family:'Rajdhani',sans-serif;
+  overflow-x:hidden;
+  cursor:crosshair;
+}
+
+/* ═══════════════════════════════════
+   SCANLINES OVERLAY
+═══════════════════════════════════ */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.15) 2px,
+    rgba(0,0,0,0.15) 4px
+  );
+  pointer-events:none;z-index:9000;
+  animation:scanroll 8s linear infinite;
+}
+@keyframes scanroll{
+  0%{background-position:0 0}
+  100%{background-position:0 100px}
+}
+
+/* Vignette */
+body::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.7) 100%);
+  pointer-events:none;z-index:8999;
+}
+
+/* ═══════════════════════════════════
+   CUSTOM CURSOR
+═══════════════════════════════════ */
+.cur{position:fixed;width:20px;height:20px;pointer-events:none;z-index:9999}
+.cur::before,.cur::after{content:'';position:absolute;background:var(--green)}
+.cur::before{top:0;left:9px;width:2px;height:20px}
+.cur::after{top:9px;left:0;height:2px;width:20px}
+.cur-dot{position:fixed;width:4px;height:4px;background:var(--green);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
+
+/* ═══════════════════════════════════
+   CANVAS
+═══════════════════════════════════ */
+#bg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.6}
+
+/* ═══════════════════════════════════
+   NAV
+═══════════════════════════════════ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2.5rem;
+  background:rgba(4,4,7,0.92);
+  border-bottom:1px solid var(--line2);
+  backdrop-filter:blur(10px);
+}
+.nav-logo{
+  font-family:'Teko',sans-serif;
+  font-size:1.8rem;font-weight:600;
+  letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--green);
+  text-shadow:0 0 20px rgba(0,255,136,0.4);
+  position:relative;
+}
+.nav-logo::after{
+  content:'BOT';
+  position:absolute;right:-3rem;top:0;
+  font-size:0.6rem;letter-spacing:0.2em;
+  color:var(--dim);font-family:'Share Tech Mono',monospace;
+}
+.nav-links{display:flex;gap:0;list-style:none}
+.nav-links a{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--dim);text-decoration:none;
+  padding:0 1.2rem;height:56px;display:flex;align-items:center;
+  border-right:1px solid var(--line);
+  transition:color 0.2s,background 0.2s;
+  position:relative;
+}
+.nav-links a::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;
+  height:2px;background:var(--green);
+  transform:scaleX(0);transition:transform 0.2s;
+}
+.nav-links a:hover{color:var(--green);background:rgba(0,255,136,0.04)}
+.nav-links a:hover::after{transform:scaleX(1)}
+.nav-status{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;letter-spacing:0.1em;
+  color:var(--green);
+  display:flex;align-items:center;gap:0.5rem;
+}
+.status-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 8px var(--green);
+  animation:blink 2s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ═══════════════════════════════════
+   HERO
+═══════════════════════════════════ */
+.hero{
+  position:relative;z-index:2;
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  justify-content:center;
+  padding:6rem 2.5rem 4rem;
+  max-width:1200px;margin:0 auto;
+  overflow:hidden;
+}
+.hero-prompt{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.75rem;letter-spacing:0.1em;
+  color:var(--green2);
+  margin-bottom:1rem;
+  opacity:0;animation:fadeIn 0.5s 0.3s forwards;
+}
+.hero-prompt::before{content:'> ';color:var(--dim)}
+.hero-h1{
+  font-family:'Teko',sans-serif;
+  font-size:clamp(4rem,14vw,12rem);
+  line-height:0.85;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  opacity:0;animation:glitchIn 0.8s 0.5s forwards;
+}
+.hero-h1 .w1{
+  display:block;
+  color:var(--white);
+  text-shadow:2px 0 var(--red),-2px 0 var(--blue);
+}
+.hero-h1 .w2{
+  display:block;
+  color:var(--green);
+  text-shadow:0 0 40px rgba(0,255,136,0.3);
+}
+.hero-tagline{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.78rem;letter-spacing:0.08em;
+  color:var(--dim);
+  margin-top:2rem;
+  max-width:500px;line-height:2;
+  opacity:0;animation:fadeIn 0.5s 0.9s forwards;
+}
+.hero-tagline span{color:var(--green)}
+
+.hero-stats{
+  display:flex;gap:0;margin-top:3rem;
+  border:1px solid var(--line2);
+  width:fit-content;
+  opacity:0;animation:fadeIn 0.5s 1.1s forwards;
+}
+.h-stat{
+  padding:1rem 2rem;border-right:1px solid var(--line2);
+  text-align:center;
+}
+.h-stat:last-child{border-right:none}
+.h-stat .n{
+  font-family:'Teko',sans-serif;
+  font-size:2rem;line-height:1;
+  color:var(--green);
+  text-shadow:0 0 15px rgba(0,255,136,0.3);
+}
+.h-stat .l{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.58rem;letter-spacing:0.15em;
+  text-transform:uppercase;color:var(--dim);
+  margin-top:0.2rem;
+}
+
+.hero-btns{
+  display:flex;gap:1rem;margin-top:2.5rem;
+  opacity:0;animation:fadeIn 0.5s 1.3s forwards;
+}
+.btn{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;
+  text-decoration:none;padding:0.8rem 1.8rem;
+  transition:all 0.2s;display:inline-flex;align-items:center;gap:0.5rem;
+  border:none;cursor:crosshair;
+}
+.btn-g{
+  background:var(--green);color:#000;
+  box-shadow:0 0 20px rgba(0,255,136,0.25);
+}
+.btn-g:hover{box-shadow:0 0 40px rgba(0,255,136,0.5);transform:translateY(-2px)}
+.btn-o{
+  background:transparent;color:var(--green);
+  border:1px solid var(--green2);
+}
+.btn-o:hover{background:rgba(0,255,136,0.06);transform:translateY(-2px)}
+
+/* glitch animation */
+@keyframes glitchIn{
+  0%{opacity:0;clip-path:inset(50% 0 50% 0)}
+  20%{opacity:1;clip-path:inset(0% 0 0% 0);transform:translate(-3px,0)}
+  40%{transform:translate(3px,0)}
+  60%{transform:translate(-1px,0)}
+  80%{transform:translate(1px,0)}
+  100%{opacity:1;transform:translate(0,0)}
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ═══════════════════════════════════
+   SECTION BASE
+═══════════════════════════════════ */
+.sec{
+  position:relative;z-index:2;
+  max-width:1200px;margin:0 auto;
+  padding:5rem 2.5rem;
+}
+.sec-header{
+  display:flex;align-items:baseline;gap:1.5rem;
+  margin-bottom:3rem;
+  border-bottom:1px solid var(--line2);
+  padding-bottom:1rem;
+}
+.sec-num{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;color:var(--dim);letter-spacing:0.15em;
+}
+.sec-title{
+  font-family:'Teko',sans-serif;
+  font-size:clamp(1.8rem,4vw,3.5rem);
+  font-weight:500;letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--white);
+}
+.sec-title span{color:var(--green)}
+.sec-sub{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.68rem;color:var(--dim);
+  letter-spacing:0.08em;margin-left:auto;
+}
+
+.hdiv{
+  width:100%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--line2) 20%,var(--line2) 80%,transparent);
+  position:relative;z-index:2;
+}
+
+/* ═══════════════════════════════════
+   FEATURE CARDS
+═══════════════════════════════════ */
+.feat-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:1px;background:var(--line);
+  border:1px solid var(--line);
+}
+.feat-card{
+  background:var(--panel);
+  padding:2rem 1.8rem;
+  position:relative;overflow:hidden;
+  transition:background 0.2s;
+}
+.feat-card::before{
+  content:'';position:absolute;
+  top:0;left:0;bottom:0;width:2px;
+  background:var(--green);
+  transform:scaleY(0);transform-origin:bottom;
+  transition:transform 0.3s;
+}
+.feat-card:hover{background:var(--panel2)}
+.feat-card:hover::before{transform:scaleY(1)}
+.feat-num{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.58rem;color:var(--dim);
+  letter-spacing:0.2em;margin-bottom:1.2rem;
+}
+.feat-icon{font-size:1.4rem;margin-bottom:0.8rem;display:block}
+.feat-name{
+  font-family:'Teko',sans-serif;
+  font-size:1.2rem;font-weight:500;
+  letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--white);margin-bottom:0.5rem;
+}
+.feat-desc{
+  font-size:0.82rem;color:var(--dim);
+  line-height:1.7;font-weight:400;
+}
+
+/* ═══════════════════════════════════
+   COMMANDS
+═══════════════════════════════════ */
+.cmd-category{margin-bottom:4rem}
+.cmd-cat-header{
+  display:flex;align-items:center;gap:1rem;
+  margin-bottom:1.2rem;
+}
+.cmd-cat-line{flex:1;height:1px;background:var(--line2)}
+.cmd-cat-label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;letter-spacing:0.2em;
+  text-transform:uppercase;color:var(--green);
+  white-space:nowrap;
+}
+.cmd-cat-count{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.6rem;color:var(--dim);
+  letter-spacing:0.1em;
+}
+.cmd-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
+  gap:1px;background:var(--line);
+  border:1px solid var(--line);
+}
+.cmd-card{
+  background:var(--panel);
+  padding:1.1rem 1.3rem;
+  transition:background 0.2s;
+  position:relative;
+}
+.cmd-card:hover{background:var(--panel2)}
+.cmd-card:hover .cmd-name{color:var(--green);text-shadow:0 0 10px rgba(0,255,136,0.3)}
+.cmd-name{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.8rem;color:#7af7c0;
+  margin-bottom:0.35rem;
+  transition:color 0.2s,text-shadow 0.2s;
+}
+.cmd-desc{font-size:0.8rem;color:var(--dim);line-height:1.6;font-weight:400}
+.cmd-perm{
+  display:inline-block;margin-top:0.5rem;
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.58rem;letter-spacing:0.06em;
+  color:var(--amber);
+  background:rgba(255,179,0,0.07);
+  border:1px solid rgba(255,179,0,0.2);
+  padding:0.12rem 0.5rem;
+}
+
+/* ═══════════════════════════════════
+   BO3 SECTION
+═══════════════════════════════════ */
+.bo3-terminal{
+  background:var(--panel);
+  border:1px solid var(--line2);
+  position:relative;overflow:hidden;
+}
+.bo3-terminal::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,34,85,0.04) 0%,transparent 60%);
+  pointer-events:none;
+}
+.terminal-bar{
+  display:flex;align-items:center;gap:0.6rem;
+  padding:0.7rem 1.2rem;
+  background:var(--panel2);
+  border-bottom:1px solid var(--line2);
+}
+.t-dot{width:10px;height:10px;border-radius:50%}
+.t-dot.r{background:#ff5f57}
+.t-dot.y{background:#ffbd2e}
+.t-dot.g{background:#28ca42}
+.t-title{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;color:var(--dim);
+  letter-spacing:0.1em;margin-left:0.5rem;
+}
+.bo3-inner{padding:2rem}
+.bo3-intro{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.72rem;color:var(--dim);
+  line-height:2;margin-bottom:2rem;
+}
+.bo3-intro .hl{color:var(--green)}
+.bo3-maps{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--line);
+  border:1px solid var(--line);
+}
+.map-card{
+  background:var(--panel2);
+  padding:1.3rem;
+  transition:background 0.2s;
+  position:relative;overflow:hidden;
+}
+.map-card::after{
+  content:'';position:absolute;
+  bottom:0;left:0;right:0;height:1px;
+  background:var(--red);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform 0.3s;
+}
+.map-card:hover{background:#120d14}
+.map-card:hover::after{transform:scaleX(1)}
+.map-name{
+  font-family:'Teko',sans-serif;
+  font-size:1rem;font-weight:500;
+  letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--white);margin-bottom:0.3rem;
+}
+.map-diff{font-size:0.72rem;color:var(--dim);margin-bottom:0.5rem}
+.map-cmd{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;color:var(--red);
+}
+
+/* ═══════════════════════════════════
+   TOS
+═══════════════════════════════════ */
+.tos-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:1px;background:var(--line);
+  border:1px solid var(--line);
+}
+.tos-card{
+  background:var(--panel);
+  padding:2rem;transition:background 0.2s;
+}
+.tos-card:hover{background:var(--panel2)}
+.tos-card-title{
+  font-family:'Teko',sans-serif;
+  font-size:1.1rem;font-weight:500;
+  letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--green);margin-bottom:1rem;
+  display:flex;align-items:center;gap:0.6rem;
+}
+.tos-card p,.tos-card li{
+  font-size:0.82rem;color:var(--dim);
+  line-height:1.9;margin-bottom:0.35rem;
+  font-weight:400;
+}
+.tos-card ul{padding-left:1.2rem}
+
+/* ═══════════════════════════════════
+   FOOTER
+═══════════════════════════════════ */
+.footer-wrap{
+  position:relative;z-index:2;
+  border-top:1px solid var(--line2);
+  padding:2rem 2.5rem;
+  display:flex;justify-content:space-between;align-items:center;
+  max-width:1200px;margin:0 auto;
+}
+.foot-logo{
+  font-family:'Teko',sans-serif;
+  font-size:1.4rem;font-weight:500;
+  letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--green);
+}
+.foot-meta{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.62rem;color:var(--dim);
+  text-align:right;line-height:2.2;letter-spacing:0.06em;
+}
+
+/* ═══════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════ */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity 0.6s ease,transform 0.6s ease}
+.reveal.in{opacity:1;transform:none}
+
+/* ═══════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════ */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--black)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:0}
+
+@media(max-width:768px){
+  nav{padding:0 1.2rem}.nav-links{display:none}
+  .hero,.sec{padding-left:1.2rem;padding-right:1.2rem}
+  .hero-stats{flex-wrap:wrap}
+  .tos-grid,.bo3-maps{grid-template-columns:1fr}
+  .footer-wrap{flex-direction:column;gap:1rem;padding:1.5rem 1.2rem}.foot-meta{text-align:center}
+}
+</style>
+</head>
+<body>
+
+<div class="cur" id="cur"></div>
+<div class="cur-dot" id="dot"></div>
+<canvas id="bg"></canvas>
+
+<!-- ════════ NAV ════════ -->
+<nav>
+  <div class="nav-logo">GiggleFargo</div>
+  <ul class="nav-links">
+    <li><a href="#intro">intro</a></li>
+    <li><a href="#commands">commands</a></li>
+    <li><a href="#bo3">bo3</a></li>
+    <li><a href="#tos">terms</a></li>
+  </ul>
+  <div class="nav-status"><div class="status-dot"></div>ONLINE · v3.0</div>
+</nav>
+
+<!-- ════════ HERO ════════ -->
+<div class="hero" id="intro">
+  <p class="hero-prompt">initialize GiggleFargo.exe — all systems nominal</p>
+  <h1 class="hero-h1">
+    <span class="w1">Giggle</span>
+    <span class="w2">Fargo</span>
+  </h1>
+  <p class="hero-tagline">
+    A Discord bot with <span>music playback</span>, full <span>moderation tools</span>,<br>
+    <span>BO3 Easter Egg guides</span> for all 6 maps, and deep server utilities.<br>
+    Built by <span>1r1sh_</span> — made for people who actually use their servers.
+  </p>
+
+  <div class="hero-stats">
+    <div class="h-stat"><div class="n">50+</div><div class="l">Commands</div></div>
+    <div class="h-stat"><div class="n">6</div><div class="l">BO3 Maps</div></div>
+    <div class="h-stat"><div class="n">13</div><div class="l">Music cmds</div></div>
+    <div class="h-stat"><div class="n">24/7</div><div class="l">Uptime</div></div>
+  </div>
+
+  <div class="hero-btns">
+    <a href="#commands" class="btn btn-g">▶ View Commands</a>
+    <a href="#tos" class="btn btn-o">Terms of Service</a>
+  </div>
+</div>
+
+<div class="hdiv"></div>
+
+<!-- ════════ FEATURES ════════ -->
+<section class="sec reveal" id="features">
+  <div class="sec-header">
+    <span class="sec-num">01</span>
+    <h2 class="sec-title">What it <span>Does</span></h2>
+    <span class="sec-sub">core modules</span>
+  </div>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-num">MODULE_01</div>
+      <span class="feat-icon">🎵</span>
+      <div class="feat-name">Music Player</div>
+      <div class="feat-desc">Full-featured queue, shuffle, repeat, volume control, and YouTube playlist support. Joins your voice channel automatically.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">MODULE_02</div>
+      <span class="feat-icon">🔨</span>
+      <div class="feat-name">Moderation</div>
+      <div class="feat-desc">Kick, temp/permban, mute, warn system with DMs, purge, slowmode, lock/unlock, nickname control — all slash commands.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">MODULE_03</div>
+      <span class="feat-icon">🧟</span>
+      <div class="feat-name">BO3 EE Guides</div>
+      <div class="feat-desc">Detailed step-by-step Easter Egg walkthroughs for all 6 BO3 Zombies maps with tips, songs, and difficulty ratings.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">MODULE_04</div>
+      <span class="feat-icon">⚙️</span>
+      <div class="feat-name">Admin Tools</div>
+      <div class="feat-desc">Command logging to a dedicated channel, auto-role on join, and server configuration — all built in.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">MODULE_05</div>
+      <span class="feat-icon">🛠️</span>
+      <div class="feat-name">Utilities</div>
+      <div class="feat-desc">AFK system, snipe, user/server/role info, polls, pfp/avatar/banner lookup, 8-ball, coinflip, and more.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-num">MODULE_06</div>
+      <span class="feat-icon">📋</span>
+      <div class="feat-name">Slash Commands</div>
+      <div class="feat-desc">Every feature is a native Discord slash command. Type / to browse — no prefix, no memorization required.</div>
+    </div>
+  </div>
+</section>
+
+<div class="hdiv"></div>
+
+<!-- ════════ COMMANDS ════════ -->
+<section class="sec reveal" id="commands">
+  <div class="sec-header">
+    <span class="sec-num">02</span>
+    <h2 class="sec-title">Command <span>Reference</span></h2>
+    <span class="sec-sub">🟡 = perm required</span>
+  </div>
+
+  <!-- Music -->
+  <div class="cmd-category reveal">
+    <div class="cmd-cat-header">
+      <div class="cmd-cat-line"></div>
+      <span class="cmd-cat-label">🎵 Music</span>
+      <span class="cmd-cat-count">13 commands</span>
+      <div class="cmd-cat-line"></div>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card"><div class="cmd-name">/play &lt;query&gt;</div><div class="cmd-desc">Play a song or YouTube playlist by name or URL. Auto-joins your voice channel.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/stop</div><div class="cmd-desc">Stop playback, clear the queue, and disconnect from voice.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/skip</div><div class="cmd-desc">Skip the current track and advance to the next in queue.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/pause</div><div class="cmd-desc">Pause playback without losing your queue position.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/continue</div><div class="cmd-desc">Resume a paused track. Alias: /resume.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/resume</div><div class="cmd-desc">Alias for /continue — resumes paused playback.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/replay</div><div class="cmd-desc">Restart the current song from the very beginning.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/repeat</div><div class="cmd-desc">Toggle repeat mode on/off. Loops the current track indefinitely.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/nowplaying</div><div class="cmd-desc">Shows current track title, duration, requester, and repeat status.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/queue</div><div class="cmd-desc">View the full music queue including what's currently playing.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/shuffle</div><div class="cmd-desc">Randomly shuffle all tracks currently in the queue.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/clearqueue</div><div class="cmd-desc">Wipe all songs from the queue without stopping playback.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/volume &lt;0–100&gt;</div><div class="cmd-desc">Set playback volume. Applies instantly to currently playing audio.</div></div>
+    </div>
+  </div>
+
+  <!-- Moderation -->
+  <div class="cmd-category reveal">
+    <div class="cmd-cat-header">
+      <div class="cmd-cat-line"></div>
+      <span class="cmd-cat-label">🔨 Moderation</span>
+      <span class="cmd-cat-count">15 commands</span>
+      <div class="cmd-cat-line"></div>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card"><div class="cmd-name">/kick &lt;member&gt;</div><div class="cmd-desc">Kick a member with an optional reason.</div><span class="cmd-perm">⚠ Kick Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/tempban &lt;member&gt; &lt;days&gt;</div><div class="cmd-desc">Temporarily ban a member. Auto-unbans after the set number of days.</div><span class="cmd-perm">⚠ Ban Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/permban &lt;member&gt;</div><div class="cmd-desc">Permanently ban a member from the server.</div><span class="cmd-perm">⚠ Ban Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/unban &lt;user_id&gt;</div><div class="cmd-desc">Unban a user by their Discord ID.</div><span class="cmd-perm">⚠ Ban Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/mute &lt;member&gt; &lt;days&gt;</div><div class="cmd-desc">Apply a Discord timeout for the set duration.</div><span class="cmd-perm">⚠ Moderate Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/unmute &lt;member&gt;</div><div class="cmd-desc">Remove an active timeout from a member immediately.</div><span class="cmd-perm">⚠ Moderate Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/warn &lt;member&gt; &lt;reason&gt;</div><div class="cmd-desc">Warn a member. Tracked per-server, member gets a DM automatically.</div><span class="cmd-perm">⚠ Moderate Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/warnings &lt;member&gt;</div><div class="cmd-desc">Quick summary of all warnings a member has received.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/showwarns &lt;member&gt;</div><div class="cmd-desc">Detailed embed of every warning with reasons listed individually.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/clearwarnings &lt;member&gt;</div><div class="cmd-desc">Clear a member's entire warning history.</div><span class="cmd-perm">⚠ Moderate Members</span></div>
+      <div class="cmd-card"><div class="cmd-name">/purge &lt;1–100&gt;</div><div class="cmd-desc">Bulk delete messages from this channel. Max 100 at once.</div><span class="cmd-perm">⚠ Manage Messages</span></div>
+      <div class="cmd-card"><div class="cmd-name">/nickname &lt;member&gt;</div><div class="cmd-desc">Change or reset a member's server nickname.</div><span class="cmd-perm">⚠ Manage Nicknames</span></div>
+      <div class="cmd-card"><div class="cmd-name">/slowmode &lt;seconds&gt;</div><div class="cmd-desc">Set slowmode delay for this channel. Use 0 to disable.</div><span class="cmd-perm">⚠ Manage Channels</span></div>
+      <div class="cmd-card"><div class="cmd-name">/lock</div><div class="cmd-desc">Lock the channel so only staff can send messages.</div><span class="cmd-perm">⚠ Manage Channels</span></div>
+      <div class="cmd-card"><div class="cmd-name">/unlock</div><div class="cmd-desc">Restore normal messaging to a locked channel.</div><span class="cmd-perm">⚠ Manage Channels</span></div>
+    </div>
+  </div>
+
+  <!-- Admin -->
+  <div class="cmd-category reveal">
+    <div class="cmd-cat-header">
+      <div class="cmd-cat-line"></div>
+      <span class="cmd-cat-label">⚙️ Admin / Config</span>
+      <span class="cmd-cat-count">3 commands</span>
+      <div class="cmd-cat-line"></div>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card"><div class="cmd-name">/setcommandlogchannel</div><div class="cmd-desc">Set a channel where every bot command usage gets logged as an embed.</div><span class="cmd-perm">⚠ Administrator</span></div>
+      <div class="cmd-card"><div class="cmd-name">/setautorole &lt;role&gt;</div><div class="cmd-desc">Auto-assign a role to every new member that joins the server.</div><span class="cmd-perm">⚠ Administrator</span></div>
+      <div class="cmd-card"><div class="cmd-name">/disableautorole</div><div class="cmd-desc">Turn off the auto-role feature for new members.</div><span class="cmd-perm">⚠ Administrator</span></div>
+    </div>
+  </div>
+
+  <!-- Utility -->
+  <div class="cmd-category reveal">
+    <div class="cmd-cat-header">
+      <div class="cmd-cat-line"></div>
+      <span class="cmd-cat-label">🛠️ Utility</span>
+      <span class="cmd-cat-count">14 commands</span>
+      <div class="cmd-cat-line"></div>
+    </div>
+    <div class="cmd-grid">
+      <div class="cmd-card"><div class="cmd-name">/afk [reason]</div><div class="cmd-desc">Set AFK status. Bot auto-replies to pings and removes AFK when you type.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/pfp [member]</div><div class="cmd-desc">Show a member's display avatar full-size.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/avatar [member]</div><div class="cmd-desc">Show a member's base account avatar (not server-specific).</div></div>
+      <div class="cmd-card"><div class="cmd-name">/banner [member]</div><div class="cmd-desc">Show a member's profile banner and accent color.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/userinfo [member]</div><div class="cmd-desc">Full info embed — account age, join date, roles, status, warning count.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/pings</div><div class="cmd-desc">List all mentionable roles and whether you currently have them.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/snipe</div><div class="cmd-desc">Show the last deleted message in the current channel.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/serverinfo</div><div class="cmd-desc">Server stats — owner, members, channels, roles, boost level.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/roleinfo &lt;role&gt;</div><div class="cmd-desc">Info about a role — color, member count, and position.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/poll &lt;question&gt;</div><div class="cmd-desc">Post a yes/no poll with automatic ✅ and ❌ reactions.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/coinflip</div><div class="cmd-desc">Flip a coin. Heads or tails.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/8ball &lt;question&gt;</div><div class="cmd-desc">Ask the magic 8-ball a question.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/ping</div><div class="cmd-desc">Check the bot's current latency in milliseconds.</div></div>
+      <div class="cmd-card"><div class="cmd-name">/commands</div><div class="cmd-desc">List every available command directly inside Discord.</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="hdiv"></div>
+
+<!-- ════════ BO3 ════════ -->
+<section class="sec reveal" id="bo3">
+  <div class="sec-header">
+    <span class="sec-num">03</span>
+    <h2 class="sec-title">BO3 Easter <span>Egg Guides</span></h2>
+    <span class="sec-sub">all 6 maps</span>
+  </div>
+
+  <div class="bo3-terminal reveal">
+    <div class="terminal-bar">
+      <div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div>
+      <span class="t-title">bo3_easter_eggs.exe — Call of Duty: Black Ops 3 Zombies</span>
+    </div>
+    <div class="bo3-inner">
+      <p class="bo3-intro">
+        Full step-by-step Easter Egg guides for every BO3 Zombies map.<br>
+        Each guide includes <span class="hl">detailed steps</span>, <span class="hl">boss tips</span>, <span class="hl">pro strategies</span>,<br>
+        <span class="hl">EE song locations</span>, and <span class="hl">story context</span> — delivered straight in Discord.<br><br>
+        Use <span class="hl">/bo3ee</span> to list all guides inside Discord.
+      </p>
+      <div class="bo3-maps">
+        <div class="map-card">
+          <div class="map-name">Shadows of Evil</div>
+          <div class="map-diff">⭐⭐⭐⭐⭐ Very Hard · 4 Players</div>
+          <div class="map-cmd">/eeshadowsofevil</div>
+        </div>
+        <div class="map-card">
+          <div class="map-name">The Giant</div>
+          <div class="map-diff">⭐⭐ Easy · Solo Friendly</div>
+          <div class="map-cmd">/eethegiant</div>
+        </div>
+        <div class="map-card">
+          <div class="map-name">Der Eisendrache</div>
+          <div class="map-diff">⭐⭐⭐⭐ Hard · 1–4 Players</div>
+          <div class="map-cmd">/eedereisendrache</div>
+        </div>
+        <div class="map-card">
+          <div class="map-name">Zetsubou No Shima</div>
+          <div class="map-diff">⭐⭐⭐⭐ Hard · 1–4 Players</div>
+          <div class="map-cmd">/eezetsubounoshima</div>
+        </div>
+        <div class="map-card">
+          <div class="map-name">Gorod Krovi</div>
+          <div class="map-diff">⭐⭐⭐⭐ Hard · 1–4 Players</div>
+          <div class="map-cmd">/eegorodkrovi</div>
+        </div>
+        <div class="map-card">
+          <div class="map-name">Revelations</div>
+          <div class="map-diff">⭐⭐⭐⭐⭐ Very Hard · 2–4 Players</div>
+          <div class="map-cmd">/eerevelations</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="hdiv"></div>
+
+<!-- ════════ TOS ════════ -->
+<section class="sec reveal" id="tos">
+  <div class="sec-header">
+    <span class="sec-num">04</span>
+    <h2 class="sec-title">Terms of <span>Service</span></h2>
+    <span class="sec-sub">v2.2 · April 2026</span>
+  </div>
+  <div class="tos-grid reveal">
+    <div class="tos-card">
+      <div class="tos-card-title">👋 Welcome</div>
+      <p>GiggleFargo is a fan-made Discord bot with no affiliation with Discord Inc. By adding it to your server or using any of its features, you agree to everything here.</p>
+    </div>
+    <div class="tos-card">
+      <div class="tos-card-title">🧑 Who Can Use It</div>
+      <ul>
+        <li>You must be at least 13 years old.</li>
+        <li>You must follow Discord's own Terms of Service.</li>
+        <li>Server admins are responsible for usage in their server.</li>
+        <li>We can pull access from any server at any time.</li>
+      </ul>
+    </div>
+    <div class="tos-card">
+      <div class="tos-card-title">📋 What You Can't Do</div>
+      <ul>
+        <li>Use the bot to harass, threaten, or target anyone.</li>
+        <li>Spam commands or intentionally flood channels.</li>
+        <li>Use /snipe or /pfp to stalk or invade someone's privacy.</li>
+        <li>Attempt to reverse-engineer or exploit the bot.</li>
+        <li>Play music in ways that violate copyright law.</li>
+        <li>Use /purge to hide rule violations or cover tracks.</li>
+      </ul>
+    </div>
+    <div class="tos-card">
+      <div class="tos-card-title">🔒 Your Data</div>
+      <ul>
+        <li>Deleted messages are held in memory for /snipe only — never written to disk.</li>
+        <li>Warnings reset when the bot restarts.</li>
+        <li>We log basic operational info to catch abuse. Nothing is sold or shared.</li>
+        <li>AFK messages only persist during active sessions.</li>
+      </ul>
+    </div>
+    <div class="tos-card">
+      <div class="tos-card-title">🎵 Music</div>
+      <ul>
+        <li>For personal and community use only — not monetized broadcasts.</li>
+        <li>You're responsible for copyright compliance on what you play.</li>
+        <li>GiggleFargo streams in real time and stores no audio.</li>
+        <li>Not affiliated with YouTube, Spotify, or any platform.</li>
+      </ul>
+    </div>
+    <div class="tos-card">
+      <div class="tos-card-title">⚖️ Legal</div>
+      <ul>
+        <li>Provided "as is" — no guarantees about 24/7 uptime.</li>
+        <li>Not liable for damages from how you use the bot.</li>
+        <li>Bot access can be revoked from any server without notice.</li>
+        <li>These terms update as the bot grows.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ FOOTER ════════ -->
+<div class="hdiv"></div>
+<div class="footer-wrap">
+  <div class="foot-logo">GiggleFargo</div>
+  <div class="foot-meta">
+    MADE BY 1R1SH_ · TOS v2.2 · APRIL 2026<br>
+    NOT AFFILIATED WITH DISCORD INC.
+  </div>
+</div>
+
+<script>
+// Custom cursor
+const cur=document.getElementById('cur'),dot=document.getElementById('dot');
+let mx=0,my=0,cx=0,cy=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX;my=e.clientY;
+  cur.style.cssText=`left:${mx-10}px;top:${my-10}px`;
+  dot.style.cssText=`left:${mx}px;top:${my}px`;
+});
+
+// Matrix-style canvas background
+const cv=document.getElementById('bg'),ct=cv.getContext('2d');
+let W,H,cols,drops=[];
+const chars='01アイウエオカキクケコサシスセソタチツテトナニヌネノGIGGLEFARGO';
+function resize(){
+  W=cv.width=innerWidth;H=cv.height=innerHeight;
+  cols=Math.floor(W/18);drops=Array(cols).fill(1);
+}
+resize();addEventListener('resize',resize);
+function drawMatrix(){
+  ct.fillStyle='rgba(4,4,7,0.05)';
+  ct.fillRect(0,0,W,H);
+  ct.fillStyle='rgba(0,255,136,0.15)';
+  ct.font='13px Share Tech Mono';
+  drops.forEach((y,i)=>{
+    const ch=chars[Math.floor(Math.random()*chars.length)];
+    ct.fillStyle=y*18<H*0.1?'rgba(0,255,136,0.5)':'rgba(0,255,136,0.08)';
+    ct.fillText(ch,i*18,y*18);
+    if(y*18>H&&Math.random()>0.975)drops[i]=0;
+    drops[i]++;
+  });
+}
+setInterval(drawMatrix,60);
+
+// Scroll reveal
+const els=document.querySelectorAll('.reveal');
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach((e,i)=>{
+    if(e.isIntersecting){
+      setTimeout(()=>e.target.classList.add('in'),i*60);
+      obs.unobserve(e.target);
+    }
+  });
+},{threshold:0.08});
+els.forEach(el=>obs.observe(el));
+
+// Nav active
+const secs=[...document.querySelectorAll('[id]')];
+const nls=document.querySelectorAll('.nav-links a');
+addEventListener('scroll',()=>{
+  let cur='';
+  secs.forEach(s=>{if(scrollY>=s.offsetTop-120)cur=s.id});
+  nls.forEach(a=>{a.style.color=a.getAttribute('href')==='#'+cur?'var(--green)':'';});
+},{passive:true});
+</script>
+</body>
+</html>
